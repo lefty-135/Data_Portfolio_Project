@@ -1,0 +1,204 @@
+PROC IMPORT DATAFILE = '/home/u49248351/sasuser.v94/hate_crime.csv'
+	DBMS = CSV
+	OUT = WORK.Hate_Crime;
+	GETNAMES = YES;
+RUN;
+
+PROC IMPORT DATAFILE = '/home/u49248351/sasuser.v94/Hate_Crime_1991.csv'
+	DBMS = CSV
+	OUT = WORK.Hate_Crime_1991;
+	GETNAMES = YES;
+RUN;
+
+PROC IMPORT DATAFILE = '/home/u49248351/sasuser.v94/Hate_Crime_2020.csv'
+	DBMS = CSV
+	OUT = WORK.Hate_Crime_2020;
+	GETNAMES = YES;
+RUN;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgplot data=WORK.HATE_CRIME;
+	vbar DATA_YEAR /;
+	yaxis grid;
+run;
+
+ods graphics / reset;
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=STATE_ABBR /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=WORK.HATE_CRIME_1991;
+run;
+
+ods graphics / reset;
+
+proc template;
+	define statgraph SASStudio.Pie;
+		begingraph;
+		layout region;
+		piechart category=STATE_ABBR /;
+		endlayout;
+		endgraph;
+	end;
+run;
+
+ods graphics / reset width=6.4in height=4.8in imagemap;
+
+proc sgrender template=SASStudio.Pie data=WORK.HATE_CRIME_2020;
+run;
+
+ods graphics / reset;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc means data=WORK.HATE_CRIME chartype min max n vardef=df;
+	var DATA_YEAR;
+	class STATE_ABBR POPULATION_GROUP_CODE;
+run;
+
+proc univariate data=WORK.HATE_CRIME vardef=df noprint;
+	var DATA_YEAR;
+	class STATE_ABBR POPULATION_GROUP_CODE;
+	histogram DATA_YEAR / normal(noprint);
+	inset min max n / position=nw;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc means data=WORK.HATE_CRIME chartype min max n vardef=df;
+	var DATA_YEAR;
+	class REGION_NAME OFFENDER_RACE;
+run;
+
+proc univariate data=WORK.HATE_CRIME vardef=df noprint;
+	var DATA_YEAR;
+	class REGION_NAME OFFENDER_RACE;
+	histogram DATA_YEAR / normal(noprint);
+	inset min max n / position=nw;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc means data=WORK.HATE_CRIME chartype min max n vardef=df;
+	var DATA_YEAR;
+	class OFFENDER_ETHNICITY OFFENSE_NAME;
+run;
+
+proc univariate data=WORK.HATE_CRIME vardef=df noprint;
+	var DATA_YEAR;
+	class OFFENDER_ETHNICITY OFFENSE_NAME;
+	histogram DATA_YEAR / normal(noprint);
+	inset min max n / position=nw;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc means data=WORK.HATE_CRIME chartype min max n vardef=df;
+	var DATA_YEAR;
+	class LOCATION_NAME BIAS_DESC;
+run;
+
+proc univariate data=WORK.HATE_CRIME vardef=df noprint;
+	var DATA_YEAR;
+	class LOCATION_NAME BIAS_DESC;
+	histogram DATA_YEAR / normal(noprint);
+	inset min max n / position=nw;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc means data=WORK.HATE_CRIME chartype min max n vardef=df;
+	var DATA_YEAR;
+	class VICTIM_TYPES MULTIPLE_OFFENSE MULTIPLE_BIAS;
+run;
+
+proc univariate data=WORK.HATE_CRIME vardef=df noprint;
+	var DATA_YEAR;
+	class VICTIM_TYPES MULTIPLE_OFFENSE MULTIPLE_BIAS;
+	histogram DATA_YEAR / normal(noprint);
+	inset min max n / position=nw;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc means data=WORK.HATE_CRIME chartype mean std min max median n vardef=df 
+		qmethod=os;
+	var DATA_YEAR TOTAL_INDIVIDUAL_VICTIMS TOTAL_OFFENDER_COUNT VICTIM_COUNT;
+run;
+
+proc univariate data=WORK.HATE_CRIME vardef=df noprint;
+	var DATA_YEAR TOTAL_INDIVIDUAL_VICTIMS TOTAL_OFFENDER_COUNT VICTIM_COUNT;
+	histogram DATA_YEAR TOTAL_INDIVIDUAL_VICTIMS TOTAL_OFFENDER_COUNT VICTIM_COUNT 
+		/ normal(noprint);
+	inset mean std min max median n / position=nw;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc glmselect data=WORK.HATE_CRIME outdesign(addinputvars)=Work.reg_design 
+		plots=(criterionpanel);
+	class DATA_YEAR / param=glm;
+	model VICTIM_COUNT=DATA_YEAR / showpvalues selection=forward 
+    
+   (slentry=0.05 select=sl);
+run;
+
+proc reg data=Work.reg_design alpha=0.05 plots(only)=(diagnostics residuals 
+		observedbypredicted);
+	where DATA_YEAR is not missing;
+	ods select DiagnosticsPanel ResidualPlot ObservedByPredicted;
+	model VICTIM_COUNT=&_GLSMOD /;
+	run;
+quit;
+
+proc delete data=Work.reg_design;
+run;
+
+ods noproctitle;
+ods graphics / imagemap=on;
+
+proc glmselect data=WORK.HATE_CRIME outdesign(addinputvars)=Work.reg_design 
+		plots=(criterionpanel);
+	class STATE_ABBR POPULATION_GROUP_CODE REGION_NAME OFFENDER_RACE 
+		OFFENDER_ETHNICITY OFFENSE_NAME LOCATION_NAME BIAS_DESC VICTIM_TYPES 
+		MULTIPLE_OFFENSE MULTIPLE_BIAS / param=glm;
+	model VICTIM_COUNT=TOTAL_OFFENDER_COUNT TOTAL_INDIVIDUAL_VICTIMS STATE_ABBR 
+		POPULATION_GROUP_CODE REGION_NAME OFFENDER_RACE OFFENDER_ETHNICITY 
+		OFFENSE_NAME LOCATION_NAME BIAS_DESC VICTIM_TYPES MULTIPLE_OFFENSE 
+		MULTIPLE_BIAS / showpvalues selection=forward 
+    
+   (slentry=0.05 select=sl);
+run;
+
+proc reg data=Work.reg_design alpha=0.05 plots(only)=(diagnostics residuals 
+		observedbypredicted);
+	where STATE_ABBR is not missing and POPULATION_GROUP_CODE is not missing and 
+		REGION_NAME is not missing and OFFENDER_RACE is not missing and 
+		OFFENDER_ETHNICITY is not missing and OFFENSE_NAME is not missing and 
+		LOCATION_NAME is not missing and BIAS_DESC is not missing and VICTIM_TYPES is 
+		not missing and MULTIPLE_OFFENSE is not missing and MULTIPLE_BIAS is not 
+		missing;
+	ods select DiagnosticsPanel ResidualPlot ObservedByPredicted;
+	model VICTIM_COUNT=&_GLSMOD /;
+	run;
+quit;
+
+proc delete data=Work.reg_design;
+run;
